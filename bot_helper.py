@@ -26,6 +26,9 @@ def updating_script():
             with (open(JSON_BD, mode='r', encoding='utf-8') as JSON_B):
                 data = json.load(JSON_B)
                 for el in data:
+                    updated_name = "@" + bot.get_chat_member(CHANNEL_TO_CHECK, el).user.username
+                    data[el]['tg_name'] = updated_name
+
                     if data[el]['days_left'] > 0:
                         data[el]['days_left'] -= 1
                         if data[el]['days_left'] == 1:
@@ -35,7 +38,14 @@ def updating_script():
                     else:
                         deleted_subs.append(data[el]["tg_name"])
                         deleted_subs_id.append(el)
-                        bot.kick_chat_member(CHANNEL_TO_CHECK, el)
+                        try:
+                            bot.kick_chat_member(CHANNEL_TO_CHECK, el)
+                        except BaseException:
+                            a = 1
+                        try:
+                            bot.decline_chat_join_request(CHANNEL_TO_CHECK, el)
+                        except BaseException:
+                            a = 1
 
             for el in deleted_subs_id:
                 del data[el]
