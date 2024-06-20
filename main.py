@@ -99,11 +99,14 @@ def add_sub(message: types.Message):
                 continue
 
             for el in data:
-                tg_name = bot.get_chat_member(channel_id, el)
-                data[el]['tg_name'] = "@" + tg_name.user.username
-                if data[el]['tg_name'] == sub_name:
-                    sub_id = el
-                    break
+                try:
+                    tg_name = bot.get_chat_member(channel_id, el)
+                    data[el]['tg_name'] = "@" + tg_name.user.username
+                    if data[el]['tg_name'] == sub_name:
+                        sub_id = el
+                        break
+                except BaseException as e:
+                    print("not in chat")
             else:
                 bot.send_message(message.chat.id, text=f'Пользователь {sub_name} не присылал заявку')
                 continue
@@ -177,4 +180,3 @@ def change_control(message: types.Message):
 
 if __name__ == "__main__":
     bot.infinity_polling()
-
