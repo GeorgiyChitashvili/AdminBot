@@ -7,6 +7,22 @@ bot = telebot.TeleBot(BOT_API)
 JSON_BD = 'subs.json'
 CHANNEL_DB = 'channel.json'
 
+
+@bot.chat_join_request_handler()
+def join_request_processing(message):
+    sub_id = message.from_user.id
+    sub_name = message.from_user.username
+
+    # Передача обработанных данных в JSON-БД
+    with (open(JSON_BD, mode='r', encoding='utf-8') as JSON_D):
+        data = json.load(JSON_D)
+        data[sub_id] = {"tg_name": sub_name, "days_left": 1}
+
+    with open(JSON_BD, mode='w', encoding='utf-8') as JSON_D:
+        json.dump(data, JSON_D)
+
+
+
 @bot.message_handler(commands=['start'])
 def main(message: types.Message):
     try:
@@ -30,11 +46,10 @@ def callback_check(message: types.Message):
             bot.send_message(message.chat.id,
                              "Выбрано: Добавить подписчика(ов). "
                              "Введите данные в следующем формате:\n"
-                             "Telegram-ник (Начинается с @) - telegram-ID - Кол-во дней подписки/продления подписки. "
+                             "Telegram-ник (Начинается с @) - Кол-во дней подписки/продления подписки. "
                              "Пример:\n"
-                             "@artem - 123131313 - 7\n"
-                             "@denis - 123123132 - 7\n\n"
-                             "Для telegram-ID используйте @userdatailsbot (https://t.me/userdatailsbot)")
+                             "@artem - 7\n"
+                             "@denis - 7\n")
 
 
 
@@ -77,37 +92,38 @@ def add_sub(message: types.Message):
         data = json.load(JSON_D)
         for sub in subs:
             sub_name = sub.split(' - ')[0]
-            try:
-                sub_id = int(sub.split(' - ')[1])
-            except BaseException as e:
-                bot.send_message(message.chat.id, text=f'Некорректный ввод {sub}.')
-                continue
 
             if not sub_name.startswith("@"):
                 bot.send_message(message.chat.id, text=f"Ошибка в запросе! {sub_name} должен начинаться с @. "
                                                        f"{sub_name} не был добавлен")
                 continue
 
-            if bot.get_chat_member(channel_id, sub_id):
+            for el in data:
                 try:
-                    sub_days = int(sub.split(' - ')[2])
+                    tg_name = bot.get_chat_member(channel_id, el)
+                    data[el]['tg_name'] = "@" + tg_name.user.username
+                    if data[el]['tg_name'] == sub_name:
+                        sub_id = el
+                        break
                 except BaseException as e:
-                    bot.send_message(message.chat.id, text='Некорректный ввод.')
-                    pass
-
-                if sub_id in data:
-                    data[sub_id]['days_left'] += sub_days
-
-                elif sub_id not in data:
-                    data[sub_id] = {"tg_name": sub_name, "days_left": sub_days}
+                    print("not in chat")
             else:
-                bot.send_message(message.chat.id, text=f'Подписчика {sub_name} нет в канале!')
+                bot.send_message(message.chat.id, text=f'Пользователь {sub_name} не присылал заявку')
                 continue
+
+            try:
+                sub_days = int(sub.split(' - ')[1])
+                data[sub_id]['days_left'] += sub_days
+                try:
+                    bot.approve_chat_join_request(channel_id, sub_id)
+                except BaseException as e:
+                    bot.send_message(message.chat.id, text='Подписчик уже в канале!')
+            except BaseException as e:
+                bot.send_message(message.chat.id, text='Некорректный ввод.')
 
 
     with open(JSON_BD, mode='w', encoding='utf-8') as JSON_D:
         json.dump(data, JSON_D)
-
 
     # SENDING ONE DATA_SHEET TO ANOTHER MANAGER'S WORKBOOK
     bot.send_message(message.chat.id, text='Подписчик добавлен')
